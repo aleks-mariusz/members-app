@@ -230,6 +230,73 @@ describe('areas render', () => {
     );
   });
 
+  it('shows unevaluated owners to ordinary members without a verdict', () => {
+    // Ordinary members and area owners receive owners with no verdict at
+    // all: the renderer must list them publicly without consulting the
+    // active/inactive split, which only super-users see.
+    const page = renderPage({
+      areas: [
+        {
+          ...area,
+          owners: [{...area.owners[0], verdict: O.none}],
+        },
+      ],
+      canManageAreas: false,
+      canSeeOwnerPrivateDetails: false,
+      canSeeTrainings: false,
+    });
+
+    expect(page.textContent).toContain('Area Owner');
+    expect(page.textContent).toContain('123');
+    expect(page.textContent).not.toContain(ownerEmail);
+    expect(normalizedText(page)).not.toContain(
+      "This area doesn't have any owners currently - email owners@makespace.org to get involved!"
+    );
+    expect(page.textContent).not.toContain(
+      'No active owners — see inactive owners below.'
+    );
+    expect(page.textContent).not.toContain('Ask to sign');
+  });
+
+  it('shows unevaluated owners with private details without a verdict', () => {
+    const page = renderPage({
+      areas: [
+        {
+          ...area,
+          owners: [{...area.owners[0], verdict: O.none}],
+        },
+      ],
+      canManageAreas: false,
+      canSeeOwnerPrivateDetails: true,
+      canSeeTrainings: false,
+    });
+
+    expect(page.textContent).toContain(ownerEmail);
+    expect(page.textContent).toContain('Agreement Signed');
+    expect(page.textContent).not.toContain('Remove area');
+  });
+
+  it('keeps unevaluated owners out of the super-user inactive split', () => {
+    // The constructor never pairs a super-user view with an unevaluated
+    // verdict, but pin what the renderer does with that shape anyway: the
+    // owner is not part of the active/inactive split, and rendering must not
+    // throw on the missing verdict.
+    const page = renderPage({
+      areas: [
+        {
+          ...area,
+          owners: [{...area.owners[0], verdict: O.none}],
+        },
+      ],
+      canManageAreas: true,
+      canSeeOwnerPrivateDetails: true,
+      canSeeTrainings: false,
+    });
+
+    expect(normalizedText(page)).toContain('Owners needed!');
+    expect(page.textContent).not.toContain('Inactive owners');
+  });
+
   it('shows the trainings column (with header tooltip) and sparkline for an area with red equipment', () => {
     const page = renderPage({
       areas: [area],
